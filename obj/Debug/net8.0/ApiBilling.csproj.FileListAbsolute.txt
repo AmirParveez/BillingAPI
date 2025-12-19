@@ -1,0 +1,9 @@
+E:\amirprojects\new\apibilling\obj\Debug\net8.0\ApiBilling.csproj.AssemblyReference.cache
+E:\amirprojects\new\apibilling\obj\Debug\net8.0\rpswa.dswa.cache.json
+E:\amirprojects\new\apibilling\obj\Debug\net8.0\ApiBilling.GeneratedMSBuildEditorConfig.editorconfig
+E:\amirprojects\new\apibilling\obj\Debug\net8.0\ApiBilling.AssemblyInfoInputs.cache
+E:\amirprojects\new\apibilling\obj\Debug\net8.0\ApiBilling.AssemblyInfo.cs
+E:\amirprojects\new\apibilling\obj\Debug\net8.0\ApiBilling.csproj.CoreCompileInputs.cache
+E:\amirprojects\new\apibilling\obj\Debug\net8.0\ApiBilling.MvcApplicationPartsAssemblyInfo.cs
+E:\amirprojects\new\apibilling\obj\Debug\net8.0\ApiBilling.MvcApplicationPartsAssemblyInfo.cache
+E:\amirprojects\new\apibilling\obj\Debug\net8.0\ApiBilling.sourcelink.json
