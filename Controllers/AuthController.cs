@@ -1,4 +1,6 @@
 using ApiBilling.Helpers;
+using ApiBilling.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -21,20 +23,17 @@ namespace ApiBilling.Controllers
             _configuration = configuration;
         }
 
-        // GET api/auth/login?email=xxx&password=yyy
-        [HttpGet("login")]
-        public IActionResult Login([FromQuery] string email, [FromQuery] string password)
+        // ===================== LOGIN (POST) =====================
+        [HttpPost("login")]
+        public IActionResult Login([FromBody] LoginRequest model)
         {
-            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+            if (string.IsNullOrWhiteSpace(model.Email) || string.IsNullOrWhiteSpace(model.Password))
                 return BadRequest("Email and Password are required.");
 
-            email = email.Trim();
-            password = password.Trim();
+            string email = model.Email.Trim();
+            string password = model.Password.Trim();
 
             string hashedPassword = PasswordHelper.HashPassword(password);
-
-            // 🔹 DEBUG: log hashed password to console
-            Console.WriteLine($"Email: {email}, Hashed Password: {hashedPassword}");
 
             string query = @"
                 SELECT u.UserId, u.FullName, u.Email, r.RoleName
@@ -69,6 +68,20 @@ namespace ApiBilling.Controllers
             });
         }
 
+        // ===================== AUTH TEST =====================
+        [Authorize]
+        [HttpGet("me")]
+        public IActionResult Me()
+        {
+            return Ok(new
+            {
+                userId = User.FindFirst("UserId")?.Value,
+                email = User.FindFirst("Email")?.Value,
+                role = User.FindFirst("Role")?.Value
+            });
+        }
+
+        // ===================== JWT =====================
         private string GenerateJwtToken(string userId, string email, string role)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
@@ -80,14 +93,14 @@ namespace ApiBilling.Controllers
                 {
                     new Claim("UserId", userId),
                     new Claim("Email", email),
-                    new Claim("Role", role)
+                    new Claim(ClaimTypes.Role, role)
                 }),
                 Expires = DateTime.UtcNow.AddHours(2),
                 Issuer = _configuration["Jwt:Issuer"],
                 Audience = _configuration["Jwt:Audience"],
                 SigningCredentials = new SigningCredentials(
                     new SymmetricSecurityKey(key),
-                    SecurityAlgorithms.HmacSha256Signature
+                    SecurityAlgorithms.HmacSha256
                 )
             };
 

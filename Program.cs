@@ -14,20 +14,34 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// SqlHelper DI
+// ================== CORS (for React) ==============
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReact",
+        policy =>
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        });
+});
+
+// ================== Dependency Injection ==========
 builder.Services.AddScoped<SqlHelper>(sp =>
 {
     var conn = builder.Configuration.GetConnectionString("Default");
     return new SqlHelper(conn!);
 });
 
-// Invoice BLL DI
 builder.Services.AddScoped<InvoiceBLL>();
 
-// JWT Authentication
+// ================== JWT Authentication ============
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.RequireHttpsMetadata = false; // true in production
+        options.SaveToken = true;
+
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -37,9 +51,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
+
             IssuerSigningKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)
-            )
+            ),
+
+            ClockSkew = TimeSpan.Zero
         };
     });
 
@@ -53,6 +70,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("AllowReact");
 
 app.UseAuthentication();
 app.UseAuthorization();
