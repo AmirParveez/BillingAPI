@@ -6,27 +6,12 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ================== Configuration ==================
-builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
-
-// ================== Services =======================
+// Add Controllers & Swagger
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// ================== CORS (for React) ==============
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowReact",
-        policy =>
-        {
-            policy.AllowAnyOrigin()
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
-        });
-});
-
-// ================== Dependency Injection ==========
+// DI
 builder.Services.AddScoped<SqlHelper>(sp =>
 {
     var conn = builder.Configuration.GetConnectionString("Default");
@@ -35,34 +20,38 @@ builder.Services.AddScoped<SqlHelper>(sp =>
 
 builder.Services.AddScoped<InvoiceBLL>();
 
-// ================== JWT Authentication ============
+// CORS for React
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReactApp", policy =>
+    {
+        policy.WithOrigins("http://localhost:3000")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
+// JWT
+var key = Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!);
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.RequireHttpsMetadata = false; // true in production
-        options.SaveToken = true;
-
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
-
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)
-            ),
-
-            ClockSkew = TimeSpan.Zero
+            IssuerSigningKey = new SymmetricSecurityKey(key)
         };
     });
 
 var app = builder.Build();
 
-// ================== Middleware =====================
+// Middleware
+app.UseCors("AllowReactApp");
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -70,12 +59,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
-app.UseCors("AllowReact");
-
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.MapControllers();
-
 app.Run();

@@ -1,6 +1,5 @@
 using ApiBilling.Helpers;
 using ApiBilling.Models;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -23,17 +22,11 @@ namespace ApiBilling.Controllers
             _configuration = configuration;
         }
 
-        // ===================== LOGIN (POST) =====================
         [HttpPost("login")]
-        public IActionResult Login([FromBody] LoginRequest model)
+        public IActionResult Login([FromBody] LoginRequest request)
         {
-            if (string.IsNullOrWhiteSpace(model.Email) || string.IsNullOrWhiteSpace(model.Password))
-                return BadRequest("Email and Password are required.");
-
-            string email = model.Email.Trim();
-            string password = model.Password.Trim();
-
-            string hashedPassword = PasswordHelper.HashPassword(password);
+            if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
+                return BadRequest(new { message = "Email and Password are required." });
 
             string query = @"
                 SELECT u.UserId, u.FullName, u.Email, r.RoleName
@@ -43,47 +36,16 @@ namespace ApiBilling.Controllers
 
             var parameters = new SqlParameter[]
             {
-                new SqlParameter("@Email", email),
-                new SqlParameter("@Password", hashedPassword)
+                new SqlParameter("@Email", request.Email),
+                new SqlParameter("@Password", request.Password) // Plain-text
             };
 
             var dt = _sqlHelper.ExecuteDataTable(query, parameters);
-
             if (dt.Rows.Count == 0)
                 return Unauthorized(new { message = "Invalid Email or Password" });
 
             var row = dt.Rows[0];
 
-            string token = GenerateJwtToken(
-                row["UserId"].ToString()!,
-                row["Email"].ToString()!,
-                row["RoleName"].ToString()!
-            );
-
-            return Ok(new
-            {
-                token,
-                role = row["RoleName"],
-                fullName = row["FullName"]
-            });
-        }
-
-        // ===================== AUTH TEST =====================
-        [Authorize]
-        [HttpGet("me")]
-        public IActionResult Me()
-        {
-            return Ok(new
-            {
-                userId = User.FindFirst("UserId")?.Value,
-                email = User.FindFirst("Email")?.Value,
-                role = User.FindFirst("Role")?.Value
-            });
-        }
-
-        // ===================== JWT =====================
-        private string GenerateJwtToken(string userId, string email, string role)
-        {
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!);
 
@@ -91,21 +53,27 @@ namespace ApiBilling.Controllers
             {
                 Subject = new ClaimsIdentity(new[]
                 {
-                    new Claim("UserId", userId),
-                    new Claim("Email", email),
-                    new Claim(ClaimTypes.Role, role)
+                    new Claim("UserId", row["UserId"].ToString()!),
+                    new Claim("Email", row["Email"].ToString()!),
+                    new Claim("Role", row["RoleName"].ToString()!)
                 }),
                 Expires = DateTime.UtcNow.AddHours(2),
                 Issuer = _configuration["Jwt:Issuer"],
                 Audience = _configuration["Jwt:Audience"],
                 SigningCredentials = new SigningCredentials(
                     new SymmetricSecurityKey(key),
-                    SecurityAlgorithms.HmacSha256
+                    SecurityAlgorithms.HmacSha256Signature
                 )
             };
 
             var token = tokenHandler.CreateToken(tokenDescriptor);
-            return tokenHandler.WriteToken(token);
+
+            return Ok(new
+            {
+                token = tokenHandler.WriteToken(token),
+                role = row["RoleName"],
+                fullName = row["FullName"]
+            });
         }
     }
 }
