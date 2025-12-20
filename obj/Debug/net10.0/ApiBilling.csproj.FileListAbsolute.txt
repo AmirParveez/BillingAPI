@@ -8,6 +8,7 @@ E:\amirprojects\new\apibilling\bin\Debug\net10.0\ApiBilling.dll
 E:\amirprojects\new\apibilling\bin\Debug\net10.0\ApiBilling.pdb
 E:\amirprojects\new\apibilling\bin\Debug\net10.0\Azure.Core.dll
 E:\amirprojects\new\apibilling\bin\Debug\net10.0\Azure.Identity.dll
+E:\amirprojects\new\apibilling\bin\Debug\net10.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll
 E:\amirprojects\new\apibilling\bin\Debug\net10.0\Microsoft.AspNetCore.OpenApi.dll
 E:\amirprojects\new\apibilling\bin\Debug\net10.0\Microsoft.Bcl.AsyncInterfaces.dll
 E:\amirprojects\new\apibilling\bin\Debug\net10.0\Microsoft.Bcl.Cryptography.dll
