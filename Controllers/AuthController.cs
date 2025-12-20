@@ -4,7 +4,6 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using System.Security.Cryptography;
 using Microsoft.Data.SqlClient;
 
 namespace ApiBilling.Controllers
@@ -14,27 +13,38 @@ namespace ApiBilling.Controllers
     public class AuthController : ControllerBase
     {
         private readonly SqlHelper _sqlHelper;
-        private readonly string _jwtKey = "YourSuperSecretKey123!"; // Keep same as appsettings.json
+        private readonly IConfiguration _configuration;
 
-        public AuthController(SqlHelper sqlHelper) => _sqlHelper = sqlHelper;
-
-        // POST api/auth/login
-        [HttpPost("login")]
-        public IActionResult Login([FromBody] LoginRequest request)
+        public AuthController(SqlHelper sqlHelper, IConfiguration configuration)
         {
-            if (string.IsNullOrEmpty(request.Email) || string.IsNullOrEmpty(request.Password))
+            _sqlHelper = sqlHelper;
+            _configuration = configuration;
+        }
+
+        // GET api/auth/login?email=xxx&password=yyy
+        [HttpGet("login")]
+        public IActionResult Login([FromQuery] string email, [FromQuery] string password)
+        {
+            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
                 return BadRequest("Email and Password are required.");
 
-            string hashedPassword = HashPassword(request.Password);
+            email = email.Trim();
+            password = password.Trim();
 
-            string query = @"SELECT u.UserId, u.FullName, u.Email, r.RoleName
-                             FROM Users u
-                             INNER JOIN Roles r ON u.RoleId = r.RoleId
-                             WHERE u.Email=@Email AND u.PasswordHash=@Password AND u.IsActive=1";
+            string hashedPassword = PasswordHelper.HashPassword(password);
+
+            // 🔹 DEBUG: log hashed password to console
+            Console.WriteLine($"Email: {email}, Hashed Password: {hashedPassword}");
+
+            string query = @"
+                SELECT u.UserId, u.FullName, u.Email, r.RoleName
+                FROM Users u
+                INNER JOIN Roles r ON u.RoleId = r.RoleId
+                WHERE u.Email=@Email AND u.PasswordHash=@Password AND u.IsActive=1";
 
             var parameters = new SqlParameter[]
             {
-                new SqlParameter("@Email", request.Email),
+                new SqlParameter("@Email", email),
                 new SqlParameter("@Password", hashedPassword)
             };
 
@@ -62,7 +72,8 @@ namespace ApiBilling.Controllers
         private string GenerateJwtToken(string userId, string email, string role)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_jwtKey);
+            var key = Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!);
+
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new[]
@@ -72,23 +83,16 @@ namespace ApiBilling.Controllers
                     new Claim("Role", role)
                 }),
                 Expires = DateTime.UtcNow.AddHours(2),
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+                Issuer = _configuration["Jwt:Issuer"],
+                Audience = _configuration["Jwt:Audience"],
+                SigningCredentials = new SigningCredentials(
+                    new SymmetricSecurityKey(key),
+                    SecurityAlgorithms.HmacSha256Signature
+                )
             };
+
             var token = tokenHandler.CreateToken(tokenDescriptor);
             return tokenHandler.WriteToken(token);
         }
-
-        private string HashPassword(string password)
-        {
-            using var sha256 = SHA256.Create();
-            var bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-            return Convert.ToBase64String(bytes);
-        }
-    }
-
-    public class LoginRequest
-    {
-        public string Email { get; set; } = "";
-        public string Password { get; set; } = "";
     }
 }
