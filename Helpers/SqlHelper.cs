@@ -1,7 +1,7 @@
 using Microsoft.Data.SqlClient;
 using System.Data;
 
-namespace ApiBilling.Helpers
+namespace api.Helpers
 {
     public class SqlHelper
     {
@@ -24,30 +24,6 @@ namespace ApiBilling.Helpers
             DataTable dt = new DataTable();
             da.Fill(dt);
             return dt;
-        }
-
-        public int ExecuteNonQuery(string query, SqlParameter[]? parameters = null)
-        {
-            using SqlConnection con = new SqlConnection(_conn);
-            using SqlCommand cmd = new SqlCommand(query, con);
-
-            if (parameters != null)
-                cmd.Parameters.AddRange(parameters);
-
-            con.Open();
-            return cmd.ExecuteNonQuery();
-        }
-
-        public object ExecuteScalar(string query, SqlParameter[]? parameters = null)
-        {
-            using SqlConnection con = new SqlConnection(_conn);
-            using SqlCommand cmd = new SqlCommand(query, con);
-
-            if (parameters != null)
-                cmd.Parameters.AddRange(parameters);
-
-            con.Open();
-            return cmd.ExecuteScalar()!;
         }
     }
 }
